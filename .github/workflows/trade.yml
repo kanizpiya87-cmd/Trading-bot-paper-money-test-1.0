@@ -1,0 +1,47 @@
+name: Run Trading Agent
+
+on:
+  schedule:
+    # Every hour, Mon-Fri (covers stock market hours loosely + crypto trades anytime)
+    - cron: '0 * * * 1-5'
+    # Every 4 hours on weekends for crypto only would need separate logic;
+    # kept simple here since stock orders outside market hours are just skipped by Alpaca.
+  workflow_dispatch:  # lets you manually trigger a run from the Actions tab, or from the control app
+    inputs:
+      kill_agent_id:
+        description: 'Agent ID to kill (optional) — leave blank for a normal run'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run trading cycle
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_BASE_URL: https://paper-api.alpaca.markets
+          STARTING_CAPITAL: '10000'
+          KILL_AGENT_ID: ${{ github.event.inputs.kill_agent_id }}
+        run: python src/main.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "trading-agent-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/ logs/
+          git diff --quiet --cached || git commit -m "Update agent state [skip ci]"
+          git push
