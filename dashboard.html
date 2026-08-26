@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Agent Colony — Paper Trading Monitor</title>
+<style>
+  :root{
+    --bg:#0b0d0f;
+    --panel:#14171a;
+    --line:#242830;
+    --ink:#e8e6e1;
+    --dim:#8b9096;
+    --alive:#5fb894;
+    --dead:#c25c4e;
+    --amber:#d9a441;
+    --mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--mono); font-size:13px;
+    padding:24px; min-height:100vh;
+  }
+  h1{
+    font-size:15px; font-weight:600; letter-spacing:0.04em;
+    text-transform:uppercase; margin:0 0 4px 0; color:var(--ink);
+  }
+  .sub{color:var(--dim); font-size:12px; margin-bottom:24px;}
+  .setup{
+    background:var(--panel); border:1px solid var(--line); border-radius:4px;
+    padding:16px; margin-bottom:20px; color:var(--dim); font-size:12px; line-height:1.6;
+  }
+  .setup input{
+    background:#0b0d0f; border:1px solid var(--line); color:var(--ink);
+    font-family:var(--mono); font-size:12px; padding:6px 8px; border-radius:3px;
+    width:420px; max-width:70%;
+  }
+  .setup button{
+    background:var(--amber); color:#0b0d0f; border:none; padding:6px 14px;
+    border-radius:3px; font-family:var(--mono); font-weight:600; cursor:pointer; margin-left:8px;
+  }
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+    gap:14px; margin-bottom:24px;
+  }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:16px;
+    position:relative; overflow:hidden;
+  }
+  .card.dead{opacity:0.5;}
+  .card .id-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .card .id{font-weight:600; font-size:13px;}
+  .status-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px;}
+  .status-dot.alive{background:var(--alive); box-shadow:0 0 6px var(--alive);}
+  .status-dot.dead{background:var(--dead);}
+  .metric-row{display:flex; justify-content:space-between; padding:3px 0; color:var(--dim); font-size:12px;}
+  .metric-row b{color:var(--ink); font-weight:600;}
+  .lineage{font-size:11px; color:var(--dim); margin-top:8px; border-top:1px dashed var(--line); padding-top:8px;}
+  .pnl-pos{color:var(--alive);} .pnl-neg{color:var(--dead);}
+  .log{
+    background:var(--panel); border:1px solid var(--line); border-radius:4px;
+    padding:14px 16px; font-size:12px; max-height:320px; overflow-y:auto;
+  }
+  .log h2{font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--dim); margin:0 0 10px 0;}
+  .log-line{padding:3px 0; color:var(--dim); border-bottom:1px solid #1a1d21;}
+  .log-line .tag{color:var(--amber); margin-right:6px;}
+  .log-line.death .tag{color:var(--dead);}
+  .log-line.spawn .tag{color:var(--alive);}
+  .empty{color:var(--dim); text-align:center; padding:40px 0;}
+</style>
+</head>
+<body>
+
+<h1>Agent Colony</h1>
+<div class="sub">Live paper-trading agent population — self-tuning, self-terminating, self-spawning</div>
+
+<div class="setup">
+  Point this at your GitHub repo's raw JSON files to see live data:<br><br>
+  <input id="repoInput" placeholder="e.g. https://raw.githubusercontent.com/USER/REPO/main" />
+  <button onclick="loadData()">Load</button>
+  <div id="statusMsg" style="margin-top:8px;"></div>
+</div>
+
+<div id="summary" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); margin-bottom:8px;"></div>
+
+<div id="agentGrid" class="grid">
+  <div class="empty">No data loaded yet. Enter your repo URL above.</div>
+</div>
+
+<div class="log">
+  <h2>Event Log</h2>
+  <div id="logList"><div class="empty">—</div></div>
+</div>
+
+<script>
+async function loadData(){
+  const base = document.getElementById('repoInput').value.replace(/\/$/, '');
+  const statusMsg = document.getElementById('statusMsg');
+  if(!base){ statusMsg.textContent = 'Enter a repo URL first.'; return; }
+  statusMsg.textContent = 'Loading...';
+  statusMsg.style.color = 'var(--dim)';
+
+  try{
+    const [agentsRes, logRes] = await Promise.all([
+      fetch(`${base}/data/agents.json`),
+      fetch(`${base}/logs/run_log.jsonl`)
+    ]);
+    if(!agentsRes.ok) throw new Error('agents.json not found — has the bot run at least once?');
+    const agents = await agentsRes.json();
+    let logLines = [];
+    if(logRes.ok){
+      const text = await logRes.text();
+      logLines = text.trim().split('\n').filter(Boolean).map(l => JSON.parse(l)).reverse();
+    }
+    renderAgents(agents);
+    renderLog(logLines);
+    statusMsg.textContent = `Loaded ${agents.length} agent(s).`;
+    statusMsg.style.color = 'var(--alive)';
+  }catch(e){
+    statusMsg.textContent = 'Error: ' + e.message;
+    statusMsg.style.color = 'var(--dead)';
+  }
+}
+
+function renderAgents(agents){
+  const grid = document.getElementById('agentGrid');
+  const summary = document.getElementById('summary');
+  if(!agents.length){
+    grid.innerHTML = '<div class="empty">No agents yet.</div>';
+    return;
+  }
+
+  const alive = agents.filter(a=>a.alive);
+  const totalCapital = agents.reduce((s,a)=>s+a.virtual_capital,0);
+  const totalStart = agents.reduce((s,a)=>s+a.start_capital,0);
+  const overallPct = ((totalCapital-totalStart)/totalStart*100).toFixed(2);
+
+  summary.innerHTML = `
+    <div class="card"><div class="metric-row"><span>Total agents</span><b>${agents.length}</b></div></div>
+    <div class="card"><div class="metric-row"><span>Alive</span><b style="color:var(--alive)">${alive.length}</b></div></div>
+    <div class="card"><div class="metric-row"><span>Total virtual capital</span><b>$${totalCapital.toFixed(2)}</b></div></div>
+    <div class="card"><div class="metric-row"><span>Overall P&L</span><b class="${overallPct>=0?'pnl-pos':'pnl-neg'}">${overallPct}%</b></div></div>
+  `;
+
+  grid.innerHTML = agents.map(a=>{
+    const pct = ((a.virtual_capital - a.start_capital)/a.start_capital*100).toFixed(2);
+    const pnlClass = pct>=0 ? 'pnl-pos':'pnl-neg';
+    return `
+    <div class="card ${a.alive?'':'dead'}">
+      <div class="id-row">
+        <span class="id"><span class="status-dot ${a.alive?'alive':'dead'}"></span>${a.id}</span>
+        <span class="${pnlClass}">${pct}%</span>
+      </div>
+      <div class="metric-row"><span>Capital</span><b>$${a.virtual_capital.toFixed(2)}</b></div>
+      <div class="metric-row"><span>Trades</span><b>${a.trade_count}</b></div>
+      <div class="metric-row"><span>Win rate</span><b>${(a.win_rate*100||0).toFixed(0)}%</b></div>
+      <div class="metric-row"><span>Position size</span><b>${(a.params.position_size_pct*100).toFixed(1)}%</b></div>
+      <div class="metric-row"><span>MA fast/slow</span><b>${a.params.fast_ma}/${a.params.slow_ma}</b></div>
+      <div class="lineage">${a.parent_id ? `spawned from <b>${a.parent_id}</b>` : 'root agent'} · ${new Date(a.created_at).toLocaleDateString()}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog(lines){
+  const list = document.getElementById('logList');
+  if(!lines.length){ list.innerHTML = '<div class="empty">No log entries yet.</div>'; return; }
+  list.innerHTML = lines.slice(0,60).map(l=>{
+    const cls = l.type==='death' ? 'death' : l.type==='spawn' ? 'spawn' : '';
+    const time = new Date(l.time).toLocaleString();
+    let msg = '';
+    if(l.type==='order') msg = `${l.agent} ${l.side.toUpperCase()} ${l.symbol} — $${l.notional}`;
+    else if(l.type==='spawn') msg = `${l.parent} spawned ${l.child} with $${l.child_capital.toFixed(2)}`;
+    else if(l.type==='death') msg = `${l.agent} hit max drawdown on ${l.symbol} — final capital $${l.final_capital.toFixed(2)}`;
+    else if(l.type==='summary') msg = `Account equity $${l.account_equity} — ${l.living_agents}/${l.total_agents} agents alive`;
+    else if(l.type==='error' || l.type==='order_error') msg = `${l.agent} error on ${l.symbol}: ${l.error}`;
+    else msg = l.message || JSON.stringify(l);
+    return `<div class="log-line ${cls}"><span class="tag">[${l.type}]</span>${time} — ${msg}</div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
