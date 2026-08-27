@@ -5,3 +5,6 @@
 {"type": "error", "agent": "root", "symbol": "BTCUSD", "error": "400 Client Error: Bad Request for url: https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=BTCUSD&timeframe=1Day&limit=40", "time": "2026-08-27T00:35:41.256617+00:00"}
 {"type": "error", "agent": "root", "symbol": "ETHUSD", "error": "400 Client Error: Bad Request for url: https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=ETHUSD&timeframe=1Day&limit=40", "time": "2026-08-27T00:35:41.366841+00:00"}
 {"type": "summary", "account_equity": 100000.0, "living_agents": 1, "total_agents": 1, "time": "2026-08-27T00:35:41.451837+00:00"}
+{"type": "error", "agent": "root", "symbol": "BTCUSD", "error": "400 Client Error: Bad Request for url: https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=BTCUSD&timeframe=1Day&limit=40", "time": "2026-08-27T00:36:52.344189+00:00"}
+{"type": "error", "agent": "root", "symbol": "ETHUSD", "error": "400 Client Error: Bad Request for url: https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=ETHUSD&timeframe=1Day&limit=40", "time": "2026-08-27T00:36:52.736270+00:00"}
+{"type": "summary", "account_equity": 100000.0, "living_agents": 1, "total_agents": 1, "time": "2026-08-27T00:36:52.905677+00:00"}
