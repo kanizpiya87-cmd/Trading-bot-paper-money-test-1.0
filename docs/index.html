@@ -222,7 +222,7 @@ async function triggerRun(){
     });
     if(res.status === 204){
       status.className = 'run-status ok';
-      status.textContent = 'Run triggered. It usually takes 30-90s to complete — tap Refresh Data shortly.';
+      status.textContent = 'Run triggered — the dashboard below auto-updates every few seconds once it lands.';
     } else {
       const text = await res.text();
       throw new Error(`GitHub returned ${res.status}: ${text.slice(0,200)}`);
@@ -372,9 +372,35 @@ if(config.repoPath && config.ghToken){
   document.getElementById('setupPanel').classList.add('hidden');
   document.getElementById('runPanel').style.display = 'block';
   refreshData();
+  startAutoRefresh();
 } else {
   showSetup();
 }
+
+// Auto-refresh: pulls the latest agent data every 3 seconds so you don't have
+// to tap "Refresh Data" yourself. This only re-reads your repo's files (cheap,
+// read-only) — it does NOT trigger new trading runs on its own. Pauses while
+// the tab/app is in the background to avoid burning battery and requests.
+let autoRefreshTimer = null;
+function startAutoRefresh(){
+  if(autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(() => {
+    if(document.visibilityState === 'visible'){
+      refreshData();
+    }
+  }, 3000);
+}
+function stopAutoRefresh(){
+  if(autoRefreshTimer){
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && config.repoPath && config.ghToken){
+    refreshData(); // catch up immediately when the app comes back to foreground
+  }
+});
 </script>
 </body>
-  </html>
+</html>
