@@ -63,6 +63,20 @@ class Agent:
         if drawdown >= MAX_DRAWDOWN_PCT:
             self.alive = False
 
+    def revive(self, fresh_capital: float | None = None):
+        """
+        Bring a dead agent back to life. Resets its virtual capital (to either
+        a specified fresh amount, or its original starting capital if not
+        given), clears its peak/drawdown tracking, and keeps its strategy
+        params and trade history intact so you can see how it performed
+        before, and how it's tuned now, after reviving it.
+        """
+        new_capital = fresh_capital if fresh_capital is not None else self.start_capital
+        self.virtual_capital = new_capital
+        self.start_capital = new_capital
+        self.peak_capital = new_capital
+        self.alive = True
+
     def should_spawn(self):
         gain = (self.virtual_capital - self.start_capital) / self.start_capital
         return self.alive and gain >= SPAWN_PROFIT_PCT
