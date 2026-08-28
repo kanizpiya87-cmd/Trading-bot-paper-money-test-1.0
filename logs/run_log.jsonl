@@ -17,3 +17,4 @@
 {"type": "summary", "account_equity": 100000.0, "living_agents": 1, "total_agents": 1, "time": "2026-08-28T09:04:52.113390+00:00"}
 {"type": "kill", "agent": "root", "message": "killed manually from control app", "time": "2026-08-28T09:07:48.441814+00:00"}
 {"type": "summary", "account_equity": 100000.0, "living_agents": 0, "total_agents": 1, "time": "2026-08-28T09:15:32.823940+00:00"}
+{"type": "summary", "account_equity": 100000.0, "living_agents": 0, "total_agents": 1, "time": "2026-08-28T09:17:10.938281+00:00"}
