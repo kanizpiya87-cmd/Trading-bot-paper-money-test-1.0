@@ -1,14 +1,14 @@
 {
   "root:SPY": {
-    "price": 771.44,
+    "price": 771.1,
     "side": "hold"
   },
   "root:QQQ": {
-    "price": 719.38,
+    "price": 721.11,
     "side": "hold"
   },
   "root:AAPL": {
-    "price": 314.93,
+    "price": 314.58,
     "side": "hold"
   }
 }
