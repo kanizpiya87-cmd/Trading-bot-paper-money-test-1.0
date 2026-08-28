@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0f">
+<title>Agent Colony Control</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#0b0d0f;
+    --panel:#14171a;
+    --panel-raised:#191d21;
+    --line:#242830;
+    --ink:#e8e6e1;
+    --dim:#8b9096;
+    --alive:#5fb894;
+    --dead:#c25c4e;
+    --amber:#d9a441;
+    --mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--mono); font-size:13px;
+    padding:calc(20px + var(--safe-top)) 16px calc(24px + var(--safe-bottom)) 16px;
+    min-height:100vh;
+  }
+  h1{
+    font-size:15px; font-weight:600; letter-spacing:0.04em;
+    text-transform:uppercase; margin:0 0 4px 0; color:var(--ink);
+    display:flex; align-items:center; gap:8px;
+  }
+  .pulse{width:7px; height:7px; border-radius:50%; background:var(--alive); box-shadow:0 0 6px var(--alive); animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .sub{color:var(--dim); font-size:11.5px; margin-bottom:20px;}
+
+  .setup{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:14px; margin-bottom:16px; color:var(--dim); font-size:12px; line-height:1.6;
+  }
+  .setup.hidden{display:none;}
+  .field-label{color:var(--dim); font-size:11px; margin-bottom:4px; display:block;}
+  .setup input{
+    background:#0b0d0f; border:1px solid var(--line); color:var(--ink);
+    font-family:var(--mono); font-size:13px; padding:10px; border-radius:4px;
+    width:100%; margin-bottom:10px;
+  }
+  .setup input:focus{outline:1px solid var(--amber); border-color:var(--amber);}
+  .btn{
+    background:var(--amber); color:#0b0d0f; border:none; padding:11px 16px;
+    border-radius:4px; font-family:var(--mono); font-weight:700; cursor:pointer;
+    font-size:13px; width:100%; letter-spacing:0.02em;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn.secondary{background:transparent; border:1px solid var(--line); color:var(--ink);}
+  .btn.danger{background:transparent; border:1px solid var(--dead); color:var(--dead);}
+  .btn:disabled{opacity:0.4;}
+  .btn-row{display:flex; gap:8px; margin-top:8px;}
+  .btn-row .btn{width:auto; flex:1;}
+
+  .run-panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:16px; margin-bottom:16px;
+  }
+  .run-status{font-size:12px; color:var(--dim); margin-top:10px; min-height:16px;}
+  .run-status.ok{color:var(--alive);}
+  .run-status.err{color:var(--dead);}
+
+  .summary-grid{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px;
+  }
+  .stat-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px;
+  }
+  .stat-card .label{color:var(--dim); font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em;}
+  .stat-card .value{font-size:19px; font-weight:700; margin-top:4px;}
+
+  .section-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--dim);
+    margin:20px 0 10px 0;
+  }
+
+  .agent-grid{display:flex; flex-direction:column; gap:10px; margin-bottom:20px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px;
+  }
+  .card.dead{opacity:0.5;}
+  .id-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .id{font-weight:700; font-size:13px; display:flex; align-items:center;}
+  .status-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:7px;}
+  .status-dot.alive{background:var(--alive); box-shadow:0 0 6px var(--alive);}
+  .status-dot.dead{background:var(--dead);}
+  .metric-row{display:flex; justify-content:space-between; padding:3px 0; color:var(--dim); font-size:12px;}
+  .metric-row b{color:var(--ink); font-weight:600;}
+  .lineage{font-size:10.5px; color:var(--dim); margin-top:8px; border-top:1px dashed var(--line); padding-top:8px;}
+  .pnl-pos{color:var(--alive);} .pnl-neg{color:var(--dead);}
+  .kill-btn{
+    margin-top:10px; width:100%; background:transparent; border:1px solid var(--line);
+    color:var(--dim); padding:8px; border-radius:4px; font-family:var(--mono);
+    font-size:11px; cursor:pointer;
+  }
+  .kill-btn:active{border-color:var(--dead); color:var(--dead);}
+
+  .log{
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:12px 14px; font-size:11.5px; max-height:280px; overflow-y:auto;
+  }
+  .log-line{padding:4px 0; color:var(--dim); border-bottom:1px solid #1a1d21; line-height:1.5;}
+  .log-line .tag{color:var(--amber); margin-right:6px;}
+  .log-line.death .tag{color:var(--dead);}
+  .log-line.spawn .tag{color:var(--alive);}
+  .empty{color:var(--dim); text-align:center; padding:30px 0; font-size:12px;}
+  .install-hint{
+    background:var(--panel-raised); border:1px solid var(--amber); border-radius:6px;
+    padding:12px 14px; margin-bottom:16px; font-size:11.5px; color:var(--dim); display:none;
+  }
+  .install-hint.show{display:block;}
+  .install-hint b{color:var(--amber);}
+  a{color:var(--amber);}
+</style>
+</head>
+<body>
+
+<h1><span class="pulse"></span>Agent Colony Control</h1>
+<div class="sub">Run, watch, and manage your paper trading agents — from any device</div>
+
+<div id="installHint" class="install-hint">
+  <b>Install this app:</b> <span id="installText">Open your browser menu and choose "Add to Home Screen" (Android) or "Install app" (desktop) for one-tap access.</span>
+</div>
+
+<div id="setupPanel" class="setup">
+  <span class="field-label">GitHub repo (owner/repo)</span>
+  <input id="repoPath" placeholder="e.g. yourname/paper-trading-agent" />
+  <span class="field-label">Personal access token (repo + workflow scope)</span>
+  <input id="ghToken" type="password" placeholder="ghp_..." />
+  <button class="btn" onclick="saveConfig()">Connect</button>
+  <div style="margin-top:10px; font-size:11px; color:var(--dim);">
+    Create a token at <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a> — check only the <b>repo</b> and <b>workflow</b> scopes. Stored only on this device.
+  </div>
+</div>
+
+<div id="runPanel" class="run-panel" style="display:none;">
+  <button class="btn" id="runBtn" onclick="triggerRun()">Run Agent Now</button>
+  <div class="btn-row">
+    <button class="btn secondary" onclick="refreshData()">Refresh Data</button>
+    <button class="btn secondary" onclick="showSetup()">Settings</button>
+  </div>
+  <div id="runStatus" class="run-status"></div>
+</div>
+
+<div id="summary" class="summary-grid"></div>
+
+<div class="section-label">Agents</div>
+<div id="agentGrid" class="agent-grid">
+  <div class="empty">Connect your repo above to load agent data.</div>
+</div>
+
+<div class="section-label">Event Log</div>
+<div class="log">
+  <div id="logList"><div class="empty">—</div></div>
+</div>
+
+<script>
+const CONFIG_KEY = "agentColonyConfig";
+let config = { repoPath: "", ghToken: "" };
+
+function loadConfig(){
+  try{
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if(raw) config = JSON.parse(raw);
+  }catch(e){}
+}
+function persistConfig(){
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+function showSetup(){
+  document.getElementById('setupPanel').classList.remove('hidden');
+  document.getElementById('runPanel').style.display = 'none';
+  document.getElementById('repoPath').value = config.repoPath || '';
+  document.getElementById('ghToken').value = config.ghToken || '';
+}
+
+function saveConfig(){
+  config.repoPath = document.getElementById('repoPath').value.trim().replace(/^\/|\/$/g,'');
+  config.ghToken = document.getElementById('ghToken').value.trim();
+  if(!config.repoPath || !config.ghToken){
+    alert('Enter both the repo path and a token.');
+    return;
+  }
+  persistConfig();
+  document.getElementById('setupPanel').classList.add('hidden');
+  document.getElementById('runPanel').style.display = 'block';
+  refreshData();
+}
+
+function ghHeaders(){
+  return {
+    "Authorization": `Bearer ${config.ghToken}`,
+    "Accept": "application/vnd.github+json"
+  };
+}
+
+async function triggerRun(){
+  const btn = document.getElementById('runBtn');
+  const status = document.getElementById('runStatus');
+  btn.disabled = true;
+  status.className = 'run-status';
+  status.textContent = 'Dispatching workflow run...';
+
+  try{
+    const url = `https://api.github.com/repos/${config.repoPath}/actions/workflows/trade.yml/dispatches`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...ghHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: 'main' })
+    });
+    if(res.status === 204){
+      status.className = 'run-status ok';
+      status.textContent = 'Run triggered — the dashboard below auto-updates every few seconds once it lands.';
+    } else {
+      const text = await res.text();
+      throw new Error(`GitHub returned ${res.status}: ${text.slice(0,200)}`);
+    }
+  }catch(e){
+    status.className = 'run-status err';
+    status.textContent = 'Error: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function refreshData(){
+  const status = document.getElementById('runStatus');
+  try{
+    const base = `https://raw.githubusercontent.com/${config.repoPath}/main`;
+    const [agentsRes, logRes] = await Promise.all([
+      fetch(`${base}/data/agents.json?t=${Date.now()}`),
+      fetch(`${base}/logs/run_log.jsonl?t=${Date.now()}`)
+    ]);
+    if(!agentsRes.ok) throw new Error('No agent data yet — trigger a run first.');
+    const agents = await agentsRes.json();
+    let logLines = [];
+    if(logRes.ok){
+      const text = await logRes.text();
+      logLines = text.trim().split('\n').filter(Boolean).map(l => JSON.parse(l)).reverse();
+    }
+    renderAgents(agents);
+    renderLog(logLines);
+  }catch(e){
+    document.getElementById('agentGrid').innerHTML = `<div class="empty">${e.message}</div>`;
+  }
+}
+
+async function killAgent(agentId){
+  if(!confirm(`Kill agent ${agentId}? This stops it from trading on the next run.`)) return;
+  const status = document.getElementById('runStatus');
+  status.className = 'run-status';
+  status.textContent = `Marking ${agentId} for kill on next run...`;
+  try{
+    // Trigger workflow with an input flag the workflow can read, OR the simplest
+    // reliable approach: dispatch with inputs.kill_agent_id, handled by main.py
+    // reading KILL_AGENT_ID env var (wired in trade.yml).
+    const url = `https://api.github.com/repos/${config.repoPath}/actions/workflows/trade.yml/dispatches`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...ghHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: 'main', inputs: { kill_agent_id: agentId } })
+    });
+    if(res.status === 204){
+      status.className = 'run-status ok';
+      status.textContent = `Kill request sent for ${agentId}. Refresh in ~1 min.`;
+    } else {
+      throw new Error(`GitHub returned ${res.status}`);
+    }
+  }catch(e){
+    status.className = 'run-status err';
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+function renderAgents(agents){
+  const grid = document.getElementById('agentGrid');
+  const summary = document.getElementById('summary');
+  if(!agents.length){
+    grid.innerHTML = '<div class="empty">No agents yet.</div>';
+    summary.innerHTML = '';
+    return;
+  }
+
+  const alive = agents.filter(a=>a.alive);
+  const totalCapital = agents.reduce((s,a)=>s+a.virtual_capital,0);
+  const totalStart = agents.reduce((s,a)=>s+a.start_capital,0);
+  const overallPct = ((totalCapital-totalStart)/totalStart*100).toFixed(2);
+
+  summary.innerHTML = `
+    <div class="stat-card"><div class="label">Alive / Total</div><div class="value">${alive.length}/${agents.length}</div></div>
+    <div class="stat-card"><div class="label">Overall P&L</div><div class="value ${overallPct>=0?'pnl-pos':'pnl-neg'}">${overallPct}%</div></div>
+    <div class="stat-card" style="grid-column:span 2;"><div class="label">Total Virtual Capital</div><div class="value">$${totalCapital.toFixed(2)}</div></div>
+  `;
+
+  grid.innerHTML = agents.map(a=>{
+    const pct = ((a.virtual_capital - a.start_capital)/a.start_capital*100).toFixed(2);
+    const pnlClass = pct>=0 ? 'pnl-pos':'pnl-neg';
+    return `
+    <div class="card ${a.alive?'':'dead'}">
+      <div class="id-row">
+        <span class="id"><span class="status-dot ${a.alive?'alive':'dead'}"></span>${a.id}</span>
+        <span class="${pnlClass}">${pct}%</span>
+      </div>
+      <div class="metric-row"><span>Capital</span><b>$${a.virtual_capital.toFixed(2)}</b></div>
+      <div class="metric-row"><span>Trades</span><b>${a.trade_count}</b></div>
+      <div class="metric-row"><span>Win rate</span><b>${(a.win_rate*100||0).toFixed(0)}%</b></div>
+      <div class="metric-row"><span>Position size</span><b>${(a.params.position_size_pct*100).toFixed(1)}%</b></div>
+      <div class="lineage">${a.parent_id ? `spawned from <b>${a.parent_id}</b>` : 'root agent'}</div>
+      ${a.alive ? `<button class="kill-btn" onclick="killAgent('${a.id}')">Kill this agent</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderLog(lines){
+  const list = document.getElementById('logList');
+  if(!lines.length){ list.innerHTML = '<div class="empty">No log entries yet.</div>'; return; }
+  list.innerHTML = lines.slice(0,60).map(l=>{
+    const cls = l.type==='death' ? 'death' : l.type==='spawn' ? 'spawn' : '';
+    const time = new Date(l.time).toLocaleString();
+    let msg = '';
+    if(l.type==='order') msg = `${l.agent} ${l.side.toUpperCase()} ${l.symbol} — $${l.notional}`;
+    else if(l.type==='spawn') msg = `${l.parent} spawned ${l.child} with $${l.child_capital.toFixed(2)}`;
+    else if(l.type==='death') msg = `${l.agent} hit max drawdown on ${l.symbol} — final capital $${l.final_capital.toFixed(2)}`;
+    else if(l.type==='summary') msg = `Equity $${l.account_equity} — ${l.living_agents}/${l.total_agents} alive`;
+    else if(l.type==='kill') msg = `${l.agent} killed manually from app`;
+    else if(l.type==='error' || l.type==='order_error') msg = `${l.agent} error on ${l.symbol}: ${l.error}`;
+    else msg = l.message || JSON.stringify(l);
+    return `<div class="log-line ${cls}"><span class="tag">[${l.type}]</span>${time} — ${msg}</div>`;
+  }).join('');
+}
+
+// PWA install hint (Android shows beforeinstallprompt; iOS/desktop get generic text)
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const hint = document.getElementById('installHint');
+  hint.classList.add('show');
+  document.getElementById('installText').innerHTML =
+    'Tap to install this app to your home screen for one-tap access. <button class="btn" style="width:auto;padding:4px 10px;margin-left:8px;" onclick="doInstall()">Install</button>';
+});
+function doInstall(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt = null;
+    document.getElementById('installHint').classList.remove('show');
+  }
+}
+
+// Register service worker for installability
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+
+// Init
+loadConfig();
+if(config.repoPath && config.ghToken){
+  document.getElementById('setupPanel').classList.add('hidden');
+  document.getElementById('runPanel').style.display = 'block';
+  refreshData();
+  startAutoRefresh();
+} else {
+  showSetup();
+}
+
+// Auto-refresh: pulls the latest agent data every 3 seconds so you don't have
+// to tap "Refresh Data" yourself. This only re-reads your repo's files (cheap,
+// read-only) — it does NOT trigger new trading runs on its own. Pauses while
+// the tab/app is in the background to avoid burning battery and requests.
+let autoRefreshTimer = null;
+function startAutoRefresh(){
+  if(autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(() => {
+    if(document.visibilityState === 'visible'){
+      refreshData();
+    }
+  }, 3000);
+}
+function stopAutoRefresh(){
+  if(autoRefreshTimer){
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && config.repoPath && config.ghToken){
+    refreshData(); // catch up immediately when the app comes back to foreground
+  }
+});
+</script>
+</body>
+  </html>
