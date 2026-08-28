@@ -8,14 +8,42 @@ against (see `src/broker.py`).
 ## What it does
 
 - Trades a small basket of stocks/ETFs (`SPY`, `QQQ`, `AAPL`) and crypto
-  (`BTCUSD`, `ETHUSD`) using a momentum + RSI blended signal.
+  (`BTCUSD`, `ETHUSD`) using a **team of specialist checks** rather than one
+  monolithic strategy — see "The Crew" below.
 - Tracks its own virtual P&L, win rate, and drawdown.
 - **Dies** (stops trading) if its virtual capital drawdown hits 20% from peak.
+- Can be **revived** from the control app, restarting with fresh capital.
 - **Spawns a child agent** with mutated strategy parameters once it's up 15%
   from its starting capital, capped at 8 total agents so it can't run away.
 - Self-tunes position sizing based on recent win rate.
-- Runs automatically on a schedule via GitHub Actions and commits its own
-  state/logs back to the repo so you can watch it evolve.
+- Runs automatically on a schedule via GitHub Actions (every 5 minutes on
+  weekdays) and commits its own state/logs back to the repo so you can watch
+  it evolve.
+
+## The Crew
+
+Instead of one strategy function, each trading decision runs through a small
+team of specialist checks (`src/crew.py`), all **in parallel**, all within a
+hard 5-minute time budget per decision (in practice each one finishes in a
+fraction of a second):
+
+- **MarketScanner** — is there enough usable price data for this symbol right now?
+- **TechnicalAnalyst** — the momentum/RSI signal (buy/sell/hold)
+- **SentimentScanner** — a cheap, rule-based volatility check (flags unusual
+  price swings, sizes trades down under it — no news API or LLM call involved)
+- **RiskChecker** — enforces a hard per-trade risk ceiling regardless of what
+  the strategy asks for
+- **Manager** — combines all of the above into one final decision, and writes
+  out its full reasoning so every trade is auditable (see the Event Log in the
+  control app)
+- **ExecutionAgent** — the only role allowed to actually call Alpaca's order
+  API, and only ever on what the Manager already approved
+
+These are fast, independent, rule-based Python functions run concurrently via
+a thread pool — not separate LLM calls — which is what keeps this both free
+and comfortably inside the 5-minute budget. The Manager can request a second
+`TechnicalAnalyst` opinion on the same symbol (a capped, fixed capability),
+but cannot invent new roles or capabilities on its own.
 
 ## Setup
 
