@@ -2,14 +2,21 @@ name: Run Trading Agent
 
 on:
   schedule:
-    # Every hour, Mon-Fri (covers stock market hours loosely + crypto trades anytime)
-    - cron: '0 * * * 1-5'
-    # Every 4 hours on weekends for crypto only would need separate logic;
-    # kept simple here since stock orders outside market hours are just skipped by Alpaca.
+    # Every 5 minutes, Mon-Fri — this is the fastest interval GitHub Actions
+    # supports for scheduled runs. Crypto symbols will also only get checked
+    # on this schedule even though crypto markets trade 24/7 on weekends too,
+    # since GitHub free-tier scheduling doesn't support two separate cadences
+    # easily. That's a tradeoff of using GitHub Actions as the "engine" - a
+    # dedicated server could check weekends too if that becomes important.
+    - cron: '*/5 * * * 1-5'
   workflow_dispatch:  # lets you manually trigger a run from the Actions tab, or from the control app
     inputs:
       kill_agent_id:
         description: 'Agent ID to kill (optional) — leave blank for a normal run'
+        required: false
+        default: ''
+      revive_agent_id:
+        description: 'Agent ID to revive (optional) — leave blank for a normal run'
         required: false
         default: ''
 
@@ -36,6 +43,7 @@ jobs:
           ALPACA_BASE_URL: https://paper-api.alpaca.markets
           STARTING_CAPITAL: '10000'
           KILL_AGENT_ID: ${{ github.event.inputs.kill_agent_id }}
+          REVIVE_AGENT_ID: ${{ github.event.inputs.revive_agent_id }}
         run: python src/main.py
 
       - name: Commit updated state
