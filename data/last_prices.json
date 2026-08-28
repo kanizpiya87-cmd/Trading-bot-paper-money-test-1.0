@@ -10,5 +10,13 @@
   "root:AAPL": {
     "price": 314.58,
     "side": "hold"
+  },
+  "root:BTCUSD": {
+    "price": 79395.375,
+    "side": "hold"
+  },
+  "root:ETHUSD": {
+    "price": 2486.405,
+    "side": "hold"
   }
 }
