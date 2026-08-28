@@ -19,11 +19,11 @@ from dataclasses import dataclass, field
 
 @dataclass
 class StrategyParams:
-    fast_ma: int = 10
-    slow_ma: int = 30
-    rsi_period: int = 14
-    rsi_buy_max: float = 55.0   # only buy if RSI below this (avoid chasing overbought)
-    rsi_sell_min: float = 45.0  # only sell if RSI above this
+    fast_ma: int = 5          # shorter windows react faster to price moves (was 10)
+    slow_ma: int = 15         # (was 30) - trend flips are detected sooner
+    rsi_period: int = 10      # (was 14) - more responsive RSI
+    rsi_buy_max: float = 65.0   # only buy if RSI below this (was 55 - now allows more room before "overbought")
+    rsi_sell_min: float = 35.0  # only sell if RSI above this (was 45 - now allows more room before "oversold")
     position_size_pct: float = 0.05  # fraction of equity per trade, adjusted by learner
 
     def mutate(self, rng: np.random.Generator, scale: float = 0.15):

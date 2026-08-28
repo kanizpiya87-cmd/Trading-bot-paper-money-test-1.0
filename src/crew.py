@@ -35,7 +35,9 @@ from strategy import StrategyParams, generate_signal, compute_rsi
 
 CREW_TIME_BUDGET_SECONDS = 300  # 5 minutes, hard cap for the whole parallel phase per symbol batch
 MAX_EXTRA_ANALYST_CALLS = 2      # how many extra "second opinion" passes the Manager may request
-VOLATILITY_ALERT_STD = 0.03      # 3% rolling stdev of returns flags "unusual activity"
+VOLATILITY_ALERT_STD = 0.05      # 5% rolling stdev of returns flags "unusual activity" (raised from 3%
+                                  # since more volatile symbols like SOL/DOGE would otherwise get
+                                  # sized down on nearly every trade, fighting the goal of trading them)
 
 
 @dataclass

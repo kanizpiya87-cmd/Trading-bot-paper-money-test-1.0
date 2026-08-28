@@ -54,7 +54,7 @@ class AlpacaBroker:
         - Orders/positions (submit_order, get_position) require NO slash: "BTCUSD"
         We accept either format from the caller and normalize here.
         """
-        is_crypto = symbol.replace("/", "") in ("BTCUSD", "ETHUSD", "SOLUSD", "DOGEUSD")
+        is_crypto = symbol.replace("/", "") in ("BTCUSD", "ETHUSD", "SOLUSD", "DOGEUSD", "SHIBUSD")
 
         if is_crypto:
             data_symbol = symbol if "/" in symbol else f"{symbol[:-3]}/{symbol[-3:]}"

@@ -41,7 +41,7 @@ from agent import Agent, load_agents, save_agents, init_root_agent, MAX_AGENTS
 from crew import run_crew_for_symbol, CREW_TIME_BUDGET_SECONDS
 
 SYMBOLS_STOCKS = ["SPY", "QQQ", "AAPL"]
-SYMBOLS_CRYPTO = ["BTCUSD", "ETHUSD"]
+SYMBOLS_CRYPTO = ["BTCUSD", "ETHUSD", "SOLUSD", "DOGEUSD", "SHIBUSD"]  # added SHIB for more meme/volatile exposure
 ALL_SYMBOLS = SYMBOLS_STOCKS + SYMBOLS_CRYPTO
 STARTING_CAPITAL = float(os.environ.get("STARTING_CAPITAL", "10000"))
 LOG_FILE = os.path.join(os.path.dirname(__file__), "..", "logs", "run_log.jsonl")
