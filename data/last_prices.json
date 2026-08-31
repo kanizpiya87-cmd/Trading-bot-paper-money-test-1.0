@@ -12,11 +12,11 @@
     "side": "sell"
   },
   "root:BTCUSD": {
-    "price": 77806.1015,
+    "price": 77572.0365,
     "side": "hold"
   },
   "root:ETHUSD": {
-    "price": 2420.838,
-    "side": "hold"
+    "price": 2414.627,
+    "side": "sell"
   }
 }
