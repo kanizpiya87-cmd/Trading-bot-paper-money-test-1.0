@@ -17,10 +17,10 @@
       "rsi_sell_min": 45.0,
       "position_size_pct": 0.05
     },
-    "virtual_capital": 9996.217696864314,
+    "virtual_capital": 9994.870910533196,
     "start_capital": 10000.0,
     "peak_capital": 10000.0,
-    "trade_count": 6,
+    "trade_count": 9,
     "win_count": 4,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -66,6 +66,27 @@
         "side": "sell",
         "pnl": 4.49,
         "capital_after": 9996.22
+      },
+      {
+        "time": "2026-09-01T14:17:59.326742+00:00",
+        "symbol": "SPY",
+        "side": "sell",
+        "pnl": -0.41,
+        "capital_after": 9995.8
+      },
+      {
+        "time": "2026-09-01T14:17:59.425396+00:00",
+        "symbol": "QQQ",
+        "side": "sell",
+        "pnl": -0.16,
+        "capital_after": 9995.64
+      },
+      {
+        "time": "2026-09-01T14:17:59.790524+00:00",
+        "symbol": "AAPL",
+        "side": "sell",
+        "pnl": -0.77,
+        "capital_after": 9994.87
       }
     ]
   }
