@@ -1,14 +1,14 @@
 {
   "root:SPY": {
-    "price": 768.13,
+    "price": 762.37,
     "side": "sell"
   },
   "root:QQQ": {
-    "price": 715.6,
+    "price": 709.4,
     "side": "sell"
   },
   "root:AAPL": {
-    "price": 319.04,
+    "price": 316.17,
     "side": "sell"
   },
   "root:BTCUSD": {
