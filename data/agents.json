@@ -17,10 +17,10 @@
       "rsi_sell_min": 45.0,
       "position_size_pct": 0.05
     },
-    "virtual_capital": 9994.197476060624,
+    "virtual_capital": 9983.250069790683,
     "start_capital": 10000.0,
     "peak_capital": 10000.0,
-    "trade_count": 1,
+    "trade_count": 2,
     "win_count": 0,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -31,6 +31,13 @@
         "side": "sell",
         "pnl": -5.8,
         "capital_after": 9994.2
+      },
+      {
+        "time": "2026-09-01T00:08:06.383516+00:00",
+        "symbol": "ETHUSD",
+        "side": "sell",
+        "pnl": -10.95,
+        "capital_after": 9983.25
       }
     ]
   }
