@@ -17,11 +17,11 @@
       "rsi_sell_min": 45.0,
       "position_size_pct": 0.05
     },
-    "virtual_capital": 9938.06271230655,
+    "virtual_capital": 9957.249814465913,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
-    "trade_count": 39,
-    "win_count": 15,
+    "trade_count": 41,
+    "win_count": 17,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
     "trade_log": [
@@ -297,6 +297,20 @@
         "side": "sell",
         "pnl": 0.96,
         "capital_after": 9938.06
+      },
+      {
+        "time": "2026-09-05T00:57:38.688732+00:00",
+        "symbol": "BTCUSD",
+        "side": "sell",
+        "pnl": 7.9,
+        "capital_after": 9945.96
+      },
+      {
+        "time": "2026-09-05T00:57:38.901304+00:00",
+        "symbol": "ETHUSD",
+        "side": "sell",
+        "pnl": 11.29,
+        "capital_after": 9957.25
       }
     ]
   }
