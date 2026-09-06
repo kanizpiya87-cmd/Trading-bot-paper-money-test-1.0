@@ -1,0 +1,66 @@
+name: Run Trading Agent
+
+on:
+  schedule:
+    # Every 5 minutes, Mon-Fri — this is the fastest interval GitHub Actions'
+    # OWN cron scheduler supports. IMPORTANT, honest caveat: GitHub does not
+    # guarantee this runs exactly every 5 minutes — on the free tier, high
+    # platform load can delay or occasionally skip scheduled runs, especially
+    # on quieter repos. If you need trades checked closer to every 5 minutes
+    # in practice, use `repository_dispatch` below with a free external
+    # pinger (e.g. cron-job.org) hitting GitHub's API — that bypasses GitHub's
+    # own scheduler queue. See README "Speeding this up further".
+    - cron: '*/5 * * * 1-5'
+  repository_dispatch:
+    types: [run-trade]   # external services (cron-job.org, etc.) can POST here
+  workflow_dispatch:  # lets you manually trigger a run from the Actions tab, or from the control app
+    inputs:
+      kill_agent_id:
+        description: 'Agent ID to kill (optional) — leave blank for a normal run'
+        required: false
+        default: ''
+      revive_agent_id:
+        description: 'Agent ID to revive (optional) — leave blank for a normal run'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'   # speeds up "Install dependencies" from ~15-20s to ~2-3s on repeat runs
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run trading cycle
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_BASE_URL: https://paper-api.alpaca.markets
+          STARTING_CAPITAL: '10000'
+          SYMBOL_FILTER: 'all'
+          KILL_AGENT_ID: ${{ github.event.inputs.kill_agent_id }}
+          REVIVE_AGENT_ID: ${{ github.event.inputs.revive_agent_id }}
+          # Optional: set these as repo secrets to get a ping on every trade/spawn/death
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python src/main.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "trading-agent-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/ logs/
+          git diff --quiet --cached || git commit -m "Update agent state [skip ci]"
+          git push

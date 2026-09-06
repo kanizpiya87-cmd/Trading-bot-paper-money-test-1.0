@@ -1,0 +1,50 @@
+name: Run Trading Agent (Crypto, Weekends)
+
+# Crypto markets trade 24/7, but the main trade.yml workflow only runs
+# Mon-Fri (cron limitation noted there). This workflow covers Sat/Sun so
+# BTC/ETH/SOL/DOGE/SHIB positions still get checked over the weekend,
+# using the same SYMBOL_FILTER mechanism in main.py to skip stock symbols
+# (which are closed anyway).
+
+on:
+  schedule:
+    - cron: '*/15 * * * 0,6'  # every 15 min on Sat/Sun - lighter cadence since it's a second workflow
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  trade-crypto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crypto-only trading cycle
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_BASE_URL: https://paper-api.alpaca.markets
+          STARTING_CAPITAL: '10000'
+          SYMBOL_FILTER: 'crypto'
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python src/main.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "trading-agent-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/ logs/
+          git diff --quiet --cached || git commit -m "Update agent state (weekend crypto) [skip ci]"
+          git push
