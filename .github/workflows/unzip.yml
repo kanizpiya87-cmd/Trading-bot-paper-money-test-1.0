@@ -1,12 +1,13 @@
 name: Unzip and Replace
 
 # Trigger manually from the Actions tab, or automatically whenever
-# paper-trading-agent-v2.zip is pushed to the repo.
+# any .zip file is pushed anywhere in the repo (handy for phone uploads,
+# where the exact folder/filename can be inconsistent).
 on:
   workflow_dispatch:
   push:
     paths:
-      - "paper-trading-agent-v2.zip"
+      - "**.zip"
 
 permissions:
   contents: write
@@ -18,24 +19,34 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Verify zip exists
+      - name: Find zip file anywhere in repo
+        id: findzip
         run: |
-          if [ ! -f "paper-trading-agent-v2.zip" ]; then
-            echo "::error::paper-trading-agent-v2.zip not found at repo root."
+          # Grab the most recently modified .zip anywhere in the repo,
+          # skipping .git internals.
+          ZIP_PATH=$(find . -type f -iname "*.zip" -not -path "./.git/*" -printf "%T@ %p\n" \
+            | sort -rn | head -n1 | cut -d' ' -f2-)
+
+          if [ -z "$ZIP_PATH" ]; then
+            echo "::error::No .zip file found anywhere in the repo. Upload one via Add file > Upload files on GitHub, then re-run this workflow."
             exit 1
           fi
 
+          echo "Found zip: $ZIP_PATH"
+          echo "zip_path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
+
       - name: Remove previous extracted folder
         run: |
+          # Adjust this name if your project folder is called something else.
           rm -rf paper-trading-agent-v2
 
       - name: Unzip archive
         run: |
-          unzip -o paper-trading-agent-v2.zip -d .
+          unzip -o "${{ steps.findzip.outputs.zip_path }}" -d .
 
       - name: Remove the zip file after extracting
         run: |
-          rm -f paper-trading-agent-v2.zip
+          rm -f "${{ steps.findzip.outputs.zip_path }}"
 
       - name: Commit and push changes
         run: |
@@ -45,6 +56,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Auto-unzip: replace paper-trading-agent-v2 contents"
+            git commit -m "Auto-unzip: replace project contents from uploaded zip"
             git push
           fi
