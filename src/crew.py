@@ -10,15 +10,30 @@ this finish in seconds, comfortably inside a 5-minute budget, without needing
 any external API calls or added cost.
 
 Roles:
-  - MarketScanner   : is this symbol's data even usable right now (enough bars, moving)?
-  - TechnicalAnalyst: momentum/RSI signal (same logic as strategy.py, wrapped as a specialist)
-  - RiskChecker     : is this position size within the agent's own risk limits?
-  - SentimentScanner: lightweight, rule-based proxy for "is anything unusual happening"
-                      (checks recent volatility as a cheap proxy - no news API/LLM call)
-  - Manager         : combines the above into one decision, logs its reasoning,
-                       and is the ONLY role that decides whether Execution should fire.
-  - ExecutionAgent  : the ONLY role allowed to call broker.submit_order(). Never
-                       decides on its own; only carries out what the Manager approved.
+  - MarketScanner    : is this symbol's data even usable right now (enough bars, moving)?
+  - TechnicalAnalyst  : the full indicator ensemble (MA, RSI, MACD, Bollinger,
+                        Stochastic RSI - see strategy.ensemble_signal), wrapped
+                        as a specialist.
+  - MomentumAnalyst   : MACD-focused read, logged separately for auditability
+                        even though it's also folded into the ensemble.
+  - VolatilityAnalyst : ATR + Bollinger bandwidth - "how much room is this
+                        symbol moving in right now", used for stop distance
+                        and the SentimentScanner's size-down decision.
+  - SentimentScanner  : lightweight, rule-based proxy for "is anything unusual
+                        happening" (checks recent volatility as a cheap proxy
+                        - no news API/LLM call).
+  - RiskChecker       : is this position size within the agent's own risk
+                        limits, and is this symbol's correlation cluster
+                        already at its exposure cap?
+  - StopManager       : checks any already-open virtual position against its
+                        ATR stop-loss/take-profit distance BEFORE a new entry
+                        is even considered.
+  - Manager           : combines all of the above into one decision, logs its
+                        full reasoning, and is the ONLY role that decides
+                        whether Execution should fire.
+  - ExecutionAgent    : the ONLY role allowed to call broker.submit_order().
+                        Never decides on its own; only carries out what the
+                        Manager approved.
 
 "Hiring": the Manager can request additional TechnicalAnalyst passes on the same
 symbol with different lookback windows (a form of getting a second opinion), but
@@ -31,7 +46,10 @@ import concurrent.futures as cf
 from dataclasses import dataclass, field
 from typing import Optional
 
-from strategy import StrategyParams, generate_signal, compute_rsi
+from strategy import (
+    StrategyParams, generate_signal, compute_rsi, compute_macd, compute_bollinger,
+    compute_atr, ensemble_signal, stop_loss_take_profit_hit,
+)
 
 CREW_TIME_BUDGET_SECONDS = 300  # 5 minutes, hard cap for the whole parallel phase per symbol batch
 MAX_EXTRA_ANALYST_CALLS = 2      # how many extra "second opinion" passes the Manager may request
@@ -65,7 +83,8 @@ def _timed(role, symbol, fn, *args, **kwargs) -> SpecialistReport:
 
 def market_scanner(prices, params: StrategyParams) -> dict:
     """Checks whether there's enough usable data to analyze this symbol at all."""
-    min_needed = max(params.slow_ma, params.rsi_period) + 2
+    min_needed = max(params.slow_ma, params.macd_slow, params.bb_period,
+                      params.rsi_period, params.atr_period) + 2
     usable = len(prices) >= min_needed
     return {
         "usable": usable,
@@ -76,22 +95,54 @@ def market_scanner(prices, params: StrategyParams) -> dict:
 
 
 def technical_analyst(prices, params: StrategyParams) -> dict:
-    """The core momentum + RSI signal, same logic as the original single-agent strategy."""
-    signal = generate_signal(prices, params)
-    rsi_series = compute_rsi(prices, params.rsi_period)
+    """The full indicator ensemble (MA/RSI/MACD/Bollinger/StochRSI) combined
+    into one confidence-weighted signal. See strategy.ensemble_signal()."""
+    result = ensemble_signal(prices, params)
+    # legacy single-indicator signal kept alongside for comparison/logging
+    result["legacy_ma_rsi_signal"] = generate_signal(prices, params)
+    return result
+
+
+def momentum_analyst(prices, params: StrategyParams) -> dict:
+    """MACD-focused read, reported separately for auditability even though
+    it's already one of the ensemble's votes."""
+    macd_line, signal_line, hist = compute_macd(prices, params.macd_fast, params.macd_slow, params.macd_signal)
     return {
-        "signal": signal,
-        "rsi": float(rsi_series.iloc[-1]) if len(rsi_series) else None,
-        "fast_ma": float(prices.rolling(params.fast_ma).mean().iloc[-1]) if len(prices) >= params.fast_ma else None,
-        "slow_ma": float(prices.rolling(params.slow_ma).mean().iloc[-1]) if len(prices) >= params.slow_ma else None,
+        "macd": float(macd_line.iloc[-1]),
+        "signal": float(signal_line.iloc[-1]),
+        "histogram": float(hist.iloc[-1]),
+        "rising": bool(len(hist) > 1 and hist.iloc[-1] > hist.iloc[-2]),
     }
 
 
-def risk_checker(agent_virtual_capital: float, params: StrategyParams, proposed_notional: float) -> dict:
+def volatility_analyst(prices, params: StrategyParams) -> dict:
+    """ATR + Bollinger bandwidth: how much room this symbol is moving in
+    right now. Feeds stop-loss distance and the sentiment size-down check."""
+    atr = compute_atr(prices, params.atr_period).iloc[-1]
+    _, _, _, pct_b, bandwidth = compute_bollinger(prices, params.bb_period, params.bb_std)
+    return {
+        "atr": float(atr),
+        "bollinger_pct_b": float(pct_b.iloc[-1]),
+        "bollinger_bandwidth": float(bandwidth.iloc[-1]),
+    }
+
+
+def risk_checker(agent_virtual_capital: float, params: StrategyParams, proposed_notional: float,
+                  cluster_ok: bool = True, daily_loss_paused: bool = False) -> dict:
     """Checks the proposed trade against basic risk rules. Does not know about
     strategy signals - purely a sanity/limits check, same job a real risk desk does."""
     max_allowed = agent_virtual_capital * 0.15  # hard ceiling regardless of what strategy asks for
     within_limit = proposed_notional <= max_allowed and proposed_notional >= 1.0
+
+    if daily_loss_paused:
+        return {"approved": False, "proposed_notional": round(proposed_notional, 2),
+                "max_allowed": round(max_allowed, 2),
+                "reason": "daily loss circuit breaker active (lesson #20), new entries paused"}
+    if not cluster_ok:
+        return {"approved": False, "proposed_notional": round(proposed_notional, 2),
+                "max_allowed": round(max_allowed, 2),
+                "reason": "correlation cluster exposure cap reached (lesson #21)"}
+
     return {
         "approved": within_limit,
         "proposed_notional": round(proposed_notional, 2),
@@ -116,16 +167,41 @@ def sentiment_scanner(prices) -> dict:
     }
 
 
+def stop_manager(open_position: dict | None, current_price: float, atr: float,
+                  params: StrategyParams) -> dict:
+    """Checks any already-open virtual position against ATR stop-loss/take-profit
+    distances BEFORE a new entry is considered (lesson #6)."""
+    if not open_position:
+        return {"has_position": False, "exit_reason": None}
+    reason = stop_loss_take_profit_hit(
+        open_position["entry_price"], current_price, open_position["side"], atr, params
+    )
+    return {"has_position": True, "exit_reason": reason, "entry_price": open_position["entry_price"],
+            "side": open_position["side"]}
+
+
 # ---------- Manager: combines specialist reports into one decision ----------
 
 def manager_decide(reports: dict, agent_virtual_capital: float, params: StrategyParams) -> dict:
     """
     reports: dict keyed by role name -> SpecialistReport, for one symbol.
-    Returns a decision dict: {action: 'buy'|'sell'|'hold', notional, reasoning: [...]}
+    Returns a decision dict:
+      {action: 'buy'|'sell'|'hold'|'close', notional, reasoning: [...]}
+    'close' means: exit the existing open position (stop-loss/take-profit hit),
+    independent of any new-entry signal.
     The Manager is deliberately simple and auditable: every factor it weighs is
     logged in `reasoning` so you can see exactly why it did or didn't trade.
     """
     reasoning = []
+
+    # 0. Stop-loss / take-profit on an existing position takes priority over
+    # any new-entry signal (lesson #6).
+    stop = reports.get("StopManager")
+    if stop and stop.ok and stop.data.get("has_position") and stop.data.get("exit_reason"):
+        reasoning.append(f"StopManager: {stop.data['exit_reason']} hit on existing "
+                          f"{stop.data['side']} position (entry ${stop.data['entry_price']:.2f}); closing.")
+        return {"action": "close", "notional": 0.0, "reasoning": reasoning,
+                "close_side": stop.data["side"]}
 
     scan = reports.get("MarketScanner")
     if not scan or not scan.ok or not scan.data.get("usable"):
@@ -137,23 +213,36 @@ def manager_decide(reports: dict, agent_virtual_capital: float, params: Strategy
         reasoning.append("TechnicalAnalyst: failed or missing, defaulting to hold.")
         return {"action": "hold", "notional": 0.0, "reasoning": reasoning}
 
-    signal = tech.data.get("signal", "hold")
-    reasoning.append(f"TechnicalAnalyst signal: {signal} (RSI={tech.data.get('rsi')}).")
+    signal = tech.data.get("action", "hold")
+    confidence = tech.data.get("confidence", 0.0)
+    regime = tech.data.get("regime", "unknown")
+    votes = tech.data.get("votes", {})
+    reasoning.append(
+        f"TechnicalAnalyst ensemble: {signal} (confidence={confidence}, regime={regime}, votes={votes})."
+    )
+
+    momentum = reports.get("MomentumAnalyst")
+    if momentum and momentum.ok:
+        reasoning.append(f"MomentumAnalyst: MACD histogram={momentum.data.get('histogram'):.4f}, "
+                          f"rising={momentum.data.get('rising')}.")
 
     if signal == "hold":
-        reasoning.append("No directional signal, holding.")
+        reasoning.append("Ensemble confidence below threshold or mixed votes, holding.")
         return {"action": "hold", "notional": 0.0, "reasoning": reasoning}
 
     sentiment = reports.get("SentimentScanner")
     size_multiplier = 1.0
     if sentiment and sentiment.ok and sentiment.data.get("volatility_flag"):
-        size_multiplier = 0.5  # don't block the trade, but size down under unusual volatility
+        size_multiplier = 0.5  # don't block the trade, but size down under unusual volatility (lesson #7)
         reasoning.append(
             f"SentimentScanner flagged elevated volatility (std={sentiment.data.get('recent_std'):.4f}); "
             f"sizing down by {int((1-size_multiplier)*100)}%."
         )
 
-    proposed_notional = agent_virtual_capital * params.position_size_pct * size_multiplier
+    # confidence itself scales size a little too - a 90%-agreement signal
+    # gets a bit more weight than a signal that barely cleared the threshold
+    confidence_scalar = 0.6 + 0.4 * min(1.0, confidence)
+    proposed_notional = agent_virtual_capital * params.position_size_pct * size_multiplier * confidence_scalar
 
     risk = reports.get("RiskChecker")
     if not risk or not risk.ok or not risk.data.get("approved"):
@@ -168,20 +257,24 @@ def manager_decide(reports: dict, agent_virtual_capital: float, params: Strategy
 # ---------- Crew orchestration: runs all specialists in parallel per symbol ----------
 
 def run_crew_for_symbol(symbol: str, prices, agent_virtual_capital: float,
-                         params: StrategyParams) -> dict:
+                         params: StrategyParams, open_position: dict | None = None,
+                         cluster_ok: bool = True, daily_loss_paused: bool = False) -> dict:
     """
-    Runs MarketScanner, TechnicalAnalyst, SentimentScanner in parallel immediately
-    (they don't depend on each other). RiskChecker needs TechnicalAnalyst's implied
-    trade size first, so it runs right after, still well within the time budget.
+    Runs MarketScanner, TechnicalAnalyst, MomentumAnalyst, VolatilityAnalyst,
+    SentimentScanner in parallel immediately (they don't depend on each
+    other). RiskChecker and StopManager need outputs from that batch first,
+    so they run right after - still well within the time budget.
     Returns the Manager's final decision plus the full specialist report for logging.
     """
     start = time.monotonic()
     reports = {}
 
-    with cf.ThreadPoolExecutor(max_workers=4) as executor:
+    with cf.ThreadPoolExecutor(max_workers=6) as executor:
         futures = {
             executor.submit(_timed, "MarketScanner", symbol, market_scanner, prices, params): "MarketScanner",
             executor.submit(_timed, "TechnicalAnalyst", symbol, technical_analyst, prices, params): "TechnicalAnalyst",
+            executor.submit(_timed, "MomentumAnalyst", symbol, momentum_analyst, prices, params): "MomentumAnalyst",
+            executor.submit(_timed, "VolatilityAnalyst", symbol, volatility_analyst, prices, params): "VolatilityAnalyst",
             executor.submit(_timed, "SentimentScanner", symbol, sentiment_scanner, prices): "SentimentScanner",
         }
         remaining_budget = CREW_TIME_BUDGET_SECONDS - (time.monotonic() - start)
@@ -193,14 +286,21 @@ def run_crew_for_symbol(symbol: str, prices, agent_virtual_capital: float,
                 reports[role] = SpecialistReport(role=role, symbol=symbol, ok=False,
                                                   error="timed out within crew budget")
 
+    # StopManager needs current price + ATR from the batch above.
+    vol = reports.get("VolatilityAnalyst")
+    atr = vol.data.get("atr", 0.0) if vol and vol.ok else 0.0
+    current_price = float(prices.iloc[-1])
+    reports["StopManager"] = _timed("StopManager", symbol, stop_manager, open_position, current_price, atr, params)
+
     # RiskChecker depends on knowing what TechnicalAnalyst/strategy would propose,
     # so it runs after the parallel batch (still typically sub-second).
     tech = reports.get("TechnicalAnalyst")
     proposed_notional = 0.0
-    if tech and tech.ok and tech.data.get("signal") in ("buy", "sell"):
+    if tech and tech.ok and tech.data.get("action") in ("buy", "sell"):
         proposed_notional = agent_virtual_capital * params.position_size_pct
     reports["RiskChecker"] = _timed(
-        "RiskChecker", symbol, risk_checker, agent_virtual_capital, params, proposed_notional
+        "RiskChecker", symbol, risk_checker, agent_virtual_capital, params, proposed_notional,
+        cluster_ok, daily_loss_paused,
     )
 
     decision = manager_decide(reports, agent_virtual_capital, params)
