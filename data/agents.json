@@ -20,6 +20,7 @@
     "virtual_capital": 9957.249814465913,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
+    "preset": "default",
     "trade_count": 41,
     "win_count": 17,
     "alive": true,
@@ -312,6 +313,8 @@
         "pnl": 11.29,
         "capital_after": 9957.25
       }
-    ]
+    ],
+    "open_positions": {},
+    "trading_paused_until": null
   }
 ]
