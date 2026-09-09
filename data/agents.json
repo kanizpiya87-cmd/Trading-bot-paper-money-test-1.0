@@ -17,11 +17,11 @@
       "rsi_sell_min": 45.0,
       "position_size_pct": 0.05
     },
-    "virtual_capital": 9957.249814465913,
+    "virtual_capital": 9954.647694929728,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
     "preset": "default",
-    "trade_count": 41,
+    "trade_count": 42,
     "win_count": 17,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -312,15 +312,16 @@
         "side": "sell",
         "pnl": 11.29,
         "capital_after": 9957.25
+      },
+      {
+        "time": "2026-09-09T09:34:27.445834+00:00",
+        "symbol": "AAPL",
+        "side": "buy",
+        "pnl": -2.6,
+        "capital_after": 9954.65
       }
     ],
-    "open_positions": {
-      "AAPL": {
-        "entry_price": 318.23,
-        "side": "buy",
-        "notional": 385.15
-      }
-    },
+    "open_positions": {},
     "trading_paused_until": null
   }
 ]
