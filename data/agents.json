@@ -335,7 +335,18 @@
         "capital_after": 9954.93
       }
     ],
-    "open_positions": {},
+    "open_positions": {
+      "SPY": {
+        "entry_price": 762.21,
+        "side": "buy",
+        "notional": 385.06
+      },
+      "AAPL": {
+        "entry_price": 318.11,
+        "side": "buy",
+        "notional": 385.06
+      }
+    },
     "trading_paused_until": null
   }
 ]
