@@ -347,6 +347,11 @@
         "entry_price": 762.21,
         "side": "buy",
         "notional": 385.06
+      },
+      "QQQ": {
+        "entry_price": 713.52,
+        "side": "sell",
+        "notional": 389.18
       }
     },
     "trading_paused_until": null
