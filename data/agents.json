@@ -370,7 +370,13 @@
         "capital_after": 9973.18
       }
     ],
-    "open_positions": {},
+    "open_positions": {
+      "AAPL": {
+        "entry_price": 337.19,
+        "side": "buy",
+        "notional": 389.55
+      }
+    },
     "trading_paused_until": null
   }
 ]
