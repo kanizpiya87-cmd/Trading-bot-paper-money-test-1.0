@@ -393,7 +393,7 @@
       "SPY": {
         "entry_price": 767.0,
         "side": "buy",
-        "notional": 459.76
+        "notional": 459.72
       }
     },
     "trading_paused_until": null
