@@ -29,11 +29,11 @@
       "position_size_pct": 0.05,
       "min_confidence": 0.35
     },
-    "virtual_capital": 9966.00592289931,
+    "virtual_capital": 9953.88460320619,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
     "preset": "default",
-    "trade_count": 55,
+    "trade_count": 58,
     "win_count": 24,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -422,25 +422,30 @@
         "side": "buy",
         "pnl": -3.61,
         "capital_after": 9966.01
+      },
+      {
+        "time": "2026-10-23T11:57:02.385317+00:00",
+        "symbol": "SPY",
+        "side": "buy",
+        "pnl": -2.04,
+        "capital_after": 9963.97
+      },
+      {
+        "time": "2026-10-23T11:57:02.638420+00:00",
+        "symbol": "QQQ",
+        "side": "buy",
+        "pnl": -4.92,
+        "capital_after": 9959.04
+      },
+      {
+        "time": "2026-10-23T11:57:02.862478+00:00",
+        "symbol": "AAPL",
+        "side": "sell",
+        "pnl": -5.16,
+        "capital_after": 9953.88
       }
     ],
-    "open_positions": {
-      "SPY": {
-        "entry_price": 765.95,
-        "side": "buy",
-        "notional": 459.43
-      },
-      "QQQ": {
-        "entry_price": 713.4681,
-        "side": "buy",
-        "notional": 399.24
-      },
-      "AAPL": {
-        "entry_price": 343.95,
-        "side": "sell",
-        "notional": 438.11
-      }
-    },
+    "open_positions": {},
     "trading_paused_until": null
   }
 ]
