@@ -3,13 +3,13 @@
     "id": "root",
     "preset": "default",
     "alive": true,
-    "virtual_capital": 9953.88,
+    "virtual_capital": 9954.41,
     "gain_pct": -0.46,
-    "win_rate": 41.4,
-    "trades": 58,
-    "open_positions": 1,
-    "sharpe_lite": -0.138,
+    "win_rate": 42.4,
+    "trades": 59,
+    "open_positions": 2,
+    "sharpe_lite": -0.136,
     "max_drawdown_pct": 0.76,
-    "avg_pnl": -0.8
+    "avg_pnl": -0.77
   }
 ]
