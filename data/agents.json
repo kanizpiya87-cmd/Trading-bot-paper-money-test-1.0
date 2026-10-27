@@ -29,11 +29,11 @@
       "position_size_pct": 0.05,
       "min_confidence": 0.35
     },
-    "virtual_capital": 9954.409002655406,
+    "virtual_capital": 9950.061570768066,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
     "preset": "default",
-    "trade_count": 59,
+    "trade_count": 60,
     "win_count": 25,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -450,14 +450,16 @@
         "side": "sell",
         "pnl": 0.52,
         "capital_after": 9954.41
+      },
+      {
+        "time": "2026-10-27T13:34:42.626821+00:00",
+        "symbol": "QQQ",
+        "side": "sell",
+        "pnl": -4.35,
+        "capital_after": 9950.06
       }
     ],
     "open_positions": {
-      "QQQ": {
-        "entry_price": 706.55,
-        "side": "sell",
-        "notional": 388.82
-      },
       "AAPL": {
         "entry_price": 341.97,
         "side": "buy",
