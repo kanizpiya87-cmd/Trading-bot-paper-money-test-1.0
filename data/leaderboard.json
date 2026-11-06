@@ -7,7 +7,7 @@
     "gain_pct": -0.86,
     "win_rate": 40.9,
     "trades": 66,
-    "open_positions": 0,
+    "open_positions": 1,
     "sharpe_lite": -0.212,
     "max_drawdown_pct": 0.99,
     "avg_pnl": -1.31

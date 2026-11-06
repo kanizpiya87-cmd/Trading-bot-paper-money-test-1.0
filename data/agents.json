@@ -501,7 +501,13 @@
         "capital_after": 9913.73
       }
     ],
-    "open_positions": {},
+    "open_positions": {
+      "QQQ": {
+        "entry_price": 657.8,
+        "side": "buy",
+        "notional": 387.23
+      }
+    },
     "trading_paused_until": null
   }
 ]
