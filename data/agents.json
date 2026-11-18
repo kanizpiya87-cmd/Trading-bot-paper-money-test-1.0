@@ -29,11 +29,11 @@
       "position_size_pct": 0.05,
       "min_confidence": 0.35
     },
-    "virtual_capital": 9921.462846507031,
+    "virtual_capital": 9919.864730633586,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
     "preset": "default",
-    "trade_count": 68,
+    "trade_count": 69,
     "win_count": 29,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
@@ -513,15 +513,16 @@
         "side": "buy",
         "pnl": 5.97,
         "capital_after": 9921.46
+      },
+      {
+        "time": "2026-11-18T10:46:16.027899+00:00",
+        "symbol": "SPY",
+        "side": "buy",
+        "pnl": -1.6,
+        "capital_after": 9919.86
       }
     ],
-    "open_positions": {
-      "SPY": {
-        "entry_price": 739.6,
-        "side": "buy",
-        "notional": 387.53
-      }
-    },
+    "open_positions": {},
     "trading_paused_until": null
   }
 ]
