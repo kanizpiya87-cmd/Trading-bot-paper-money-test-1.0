@@ -522,7 +522,18 @@
         "capital_after": 9919.86
       }
     ],
-    "open_positions": {},
+    "open_positions": {
+      "QQQ": {
+        "entry_price": 660.24,
+        "side": "buy",
+        "notional": 383.7
+      },
+      "AAPL": {
+        "entry_price": 350.55,
+        "side": "buy",
+        "notional": 387.47
+      }
+    },
     "trading_paused_until": null
   }
 ]
