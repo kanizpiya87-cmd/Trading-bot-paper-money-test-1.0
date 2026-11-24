@@ -550,7 +550,13 @@
         "capital_after": 9942.9
       }
     ],
-    "open_positions": {},
+    "open_positions": {
+      "SPY": {
+        "entry_price": 715.91,
+        "side": "sell",
+        "notional": 403.28
+      }
+    },
     "trading_paused_until": null
   }
 ]
