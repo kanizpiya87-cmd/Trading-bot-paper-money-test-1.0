@@ -29,12 +29,12 @@
       "position_size_pct": 0.05,
       "min_confidence": 0.35
     },
-    "virtual_capital": 9931.064387630897,
+    "virtual_capital": 9942.896448870488,
     "start_capital": 10000.0,
     "peak_capital": 10013.137056364298,
     "preset": "default",
-    "trade_count": 71,
-    "win_count": 31,
+    "trade_count": 73,
+    "win_count": 33,
     "alive": true,
     "created_at": "2026-08-27T00:20:26.981924+00:00",
     "trade_log": [
@@ -534,20 +534,23 @@
         "side": "buy",
         "pnl": 3.96,
         "capital_after": 9931.06
+      },
+      {
+        "time": "2026-11-24T11:38:45.578595+00:00",
+        "symbol": "SPY",
+        "side": "buy",
+        "pnl": 5.02,
+        "capital_after": 9936.09
+      },
+      {
+        "time": "2026-11-24T11:38:45.704460+00:00",
+        "symbol": "QQQ",
+        "side": "buy",
+        "pnl": 6.81,
+        "capital_after": 9942.9
       }
     ],
-    "open_positions": {
-      "SPY": {
-        "entry_price": 706.01,
-        "side": "buy",
-        "notional": 384.13
-      },
-      "QQQ": {
-        "entry_price": 627.48,
-        "side": "buy",
-        "notional": 384.13
-      }
-    },
+    "open_positions": {},
     "trading_paused_until": null
   }
 ]
